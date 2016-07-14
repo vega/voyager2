@@ -1,12 +1,13 @@
 'use strict';
 
 angular.module('voyager2')
-  .controller('MainCtrl', function($scope, $document, Spec, Dataset, Wildcards, Config, consts, Chronicle, Logger, Bookmarks, Modals) {
+  .controller('MainCtrl', function($scope, $document, Spec, Dataset, Wildcards, Config, consts, Chronicle, Logger, Bookmarks, Modals, FilterManager) {
     $scope.Spec = Spec;
     $scope.Dataset = Dataset;
     $scope.Wildcards = Wildcards;
     $scope.Config = Config;
     $scope.Bookmarks = Bookmarks;
+    $scope.FilterManager = FilterManager;
     $scope.consts = consts;
     $scope.showDevPanel = false;
     $scope.embedded = !!consts.embeddedData;
@@ -38,7 +39,7 @@ angular.module('voyager2')
       Config.updateDataset(Dataset.dataset);
 
       if (consts.initialSpec) {
-          Spec.parseSpec(consts.initialSpec);
+        Spec.reset(consts.initialSpec);
       }
 
       $scope.chron = Chronicle.record('Spec.spec', $scope, true,

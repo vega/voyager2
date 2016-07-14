@@ -9,7 +9,7 @@
  */
 angular.module('voyager2')
   // TODO: rename to Query once it's complete independent from Polestar
-  .service('Spec', function(ANY, _, vg, vl, cql, ZSchema, Alerts, Config, Dataset, Schema, Pills, $window, consts) {
+  .service('Spec', function(ANY, _, vg, vl, cql, ZSchema, Alerts, Config, Dataset, Schema, Pills, $window, consts, FilterManager) {
     var Spec = {
       /** @type {Object} verbose spec edited by the UI */
       spec: null,
@@ -41,31 +41,42 @@ angular.module('voyager2')
 
     Spec.parseShorthand = function(newShorthand) {
       var newSpec = vl.shorthand.parseShorthand(newShorthand, null, Config.config);
-      Spec.parseSpec(newSpec);
+      Spec.reset(newSpec);
     };
 
-    // takes a partial spec
-    Spec.parseSpec = function(newSpec) {
-      // TODO: revise this
-      Spec.spec = vl.util.mergeDeep(Spec.instantiate(), newSpec);
-    };
+    var CHANNELS = _.keys(Schema.schema.definitions.Encoding.properties).concat([ANY+0]);
 
-    var keys =  _.keys(Schema.schema.definitions.Encoding.properties).concat([ANY+0]);
+    Spec.reset = function(oldSpec) {
+      var oldFilter = null;
+      if (oldSpec) {
+        // Store oldFilter, copy oldSpec that exclude transform.filter
+        oldFilter = (oldSpec.transform || {}).filter;
+        var transform = _.without(oldSpec.transform || {}, 'filter');
+        oldSpec = _.without(oldSpec, 'transform');
+        if (transform) {
+          oldSpec.transform = transform;
+        }
+      }
 
-    Spec.instantiate = function() {
-      return {
+      var spec = {
         data: Config.data,
-        mark: ANY,
-        encoding: keys.reduce(function(e, c) {
+        mark: 'point',
+        transform: {
+          // This is not Vega-Lite filter object, but rather our FilterModel
+          filter: FilterManager.reset(oldFilter)
+        },
+        encoding: CHANNELS.reduce(function(e, c) {
           e[c] = {};
           return e;
         }, {}),
         config: Config.config
       };
-    };
 
-    Spec.reset = function() {
-      Spec.spec = Spec.instantiate();
+      if (oldSpec) {
+        spec = vl.util.mergeDeep(spec, oldSpec);
+      }
+
+      Spec.spec = spec;
     };
 
     /**
@@ -74,8 +85,19 @@ angular.module('voyager2')
     Spec.update = function(spec) {
       spec = _.cloneDeep(spec || Spec.spec);
 
+
       Spec._removeEmptyFieldDefs(spec);
       deleteNulls(spec);
+
+      if (spec.transform && spec.transform.filter) {
+        delete spec.transform.filter;
+      }
+
+      var filter = FilterManager.getVlFilter();
+      if (filter) {
+        spec.transform = spec.transform || {};
+        spec.transform.filter = filter;
+      }
 
       // we may have removed encoding
       if (!('encoding' in spec)) {
@@ -120,7 +142,7 @@ angular.module('voyager2')
       var specQuery = {
         data: Config.data,
         mark: spec.mark === ANY ? '?' : spec.mark,
-        // TODO: transform
+        transform: spec.transform,
         encodings: vg.util.keys(spec.encoding).reduce(function(encodings, channel) {
           encodings.push(vg.util.extend(
             { channel: Pills.isAnyChannel(channel) ? '?' : channel },
@@ -154,7 +176,6 @@ angular.module('voyager2')
       if (pill.field && dimensionOnly) {
         if (pill.aggregate==='count') {
           pill = {};
-          $window.alert('COUNT not supported here!');
         } else if (type === vl.type.QUANTITATIVE && !pill.bin) {
           pill.aggregate = undefined;
           pill.bin = {maxbins: vl.bin.MAXBINS_DEFAULT};
