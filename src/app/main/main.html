@@ -7,7 +7,7 @@
           <div class="controls">
             <a ng-show="Bookmarks.isSupported" class="command" ng-click="showModal('bookmark-list')">
               <i class="fa fa-bookmark"></i>
-              Bookmarks ({{Bookmarks.length}})
+              Bookmarks ({{Bookmarks.list.length}})
             </a>
             <a class="command" ng-click="chron.undo()" ng-class="{disabled: !canUndo}"><i class="fa fa-undo"></i> Undo</a>
             <a class="command" ng-click="chron.redo()" ng-class="{disabled: !canRedo}"><i class="fa fa-repeat"></i> Redo</a>
@@ -31,7 +31,10 @@
             <span class="dataset-name">{{Dataset.currentDataset.name}}</span>
           </div>
         </div>
-        <schema-list></schema-list>
+        <schema-list field-defs="Dataset.dataschema"
+          order-by="Dataset.fieldOrder"
+          filter-manager="FilterManager"
+        ></schema-list>
         <div id="footer">
           <ul class="menu">
             <span ng-show="consts.debug">
@@ -47,7 +50,7 @@
       </div>
     </div>
     <div class="pane encoding-pane">
-      <shelves spec="Spec.spec" support-any="true"></shelves>
+      <shelves spec="Spec.spec" support-any="true" filter-manager="FilterManager"></shelves>
     </div>
 
     <div class="pane vis-pane">

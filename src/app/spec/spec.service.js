@@ -9,7 +9,7 @@
  */
 angular.module('voyager2')
   // TODO: rename to Query once it's complete independent from Polestar
-  .service('Spec', function(ANY, _, vg, vl, cql, ZSchema, Alerts, Config, Dataset, Schema, Pills) {
+  .service('Spec', function(ANY, _, vg, vl, cql, ZSchema, Alerts, Config, Dataset, Schema, Pills, FilterManager) {
     var Spec = {
       /** @type {Object} verbose spec edited by the UI */
       spec: null,
@@ -41,39 +41,61 @@ angular.module('voyager2')
 
     Spec.parseShorthand = function(newShorthand) {
       var newSpec = vl.shorthand.parseShorthand(newShorthand, null, Config.config);
-      Spec.parseSpec(newSpec);
+      Spec.reset(newSpec);
     };
 
-    // takes a partial spec
-    Spec.parseSpec = function(newSpec) {
-      // TODO: revise this
-      Spec.spec = vl.util.mergeDeep(Spec.instantiate(), newSpec);
-    };
+    Spec.reset = function(oldSpec) {
+      var oldFilter = null;
+      if (oldSpec) {
+        // Store oldFilter, copy oldSpec that exclude transform.filter
+        oldFilter = (oldSpec.transform || {}).filter;
+        var transform = _.without(oldSpec.transform || {}, 'filter');
+        oldSpec = _.without(oldSpec, 'transform');
+        if (transform) {
+          oldSpec.transform = transform;
+        }
+      }
 
-    var keys =  _.keys(Schema.schema.definitions.Encoding.properties).concat([ANY]);
-
-    Spec.instantiate = function() {
-      return {
+      var spec = {
         data: Config.data,
-        mark: ANY,
-        encoding: keys.reduce(function(e, c) {
+        mark: 'point',
+        transform: {
+          // This is not Vega-Lite filter object, but rather our FilterModel
+          filter: FilterManager.reset(oldFilter)
+        },
+        encoding: _.keys(Schema.schema.definitions.Encoding.properties).reduce(function(e, c) {
           e[c] = {};
           return e;
         }, {}),
         config: Config.config
       };
+
+      if (oldSpec) {
+        spec = vl.util.mergeDeep(spec, oldSpec);
+      }
+
+      Spec.spec = spec;
     };
 
-    Spec.reset = function() {
-      Spec.spec = Spec.instantiate();
-    };
-
-    // takes a full spec, validates it and then rebuilds everything
+    /**
+     * Takes a full spec, validates it and then rebuilds all members of the chart object.
+     */
     Spec.update = function(spec) {
       spec = _.cloneDeep(spec || Spec.spec);
 
+
       Spec._removeEmptyFieldDefs(spec);
       deleteNulls(spec);
+
+      if (spec.transform && spec.transform.filter) {
+        delete spec.transform.filter;
+      }
+
+      var filter = FilterManager.getVlFilter();
+      if (filter) {
+        spec.transform = spec.transform || {};
+        spec.transform.filter = filter;
+      }
 
       // we may have removed encoding
       if (!('encoding' in spec)) {
@@ -116,7 +138,7 @@ angular.module('voyager2')
       var specQuery = {
         data: Config.data,
         mark: spec.mark === ANY ? '?' : spec.mark,
-        // TODO: transform
+        transform: spec.transform,
         encodings: vg.util.keys(spec.encoding).reduce(function(encodings, channel) {
           encodings.push(vg.util.extend(
             { channel: channel === ANY ? '?' : channel },
@@ -134,7 +156,7 @@ angular.module('voyager2')
       };
     }
 
-    function instantiatePill(channel) {
+    function instantiatePill(channel) { // jshint ignore:line
       return {};
     }
 
@@ -148,7 +170,6 @@ angular.module('voyager2')
       if (pill.field && dimensionOnly) {
         if (pill.aggregate==='count') {
           pill = {};
-          $window.alert('COUNT not supported here!');
         } else if (type === vl.type.QUANTITATIVE && !pill.bin) {
           pill.aggregate = undefined;
           pill.bin = {maxbins: vl.bin.MAXBINS_DEFAULT};
@@ -162,7 +183,7 @@ angular.module('voyager2')
       }
 
       // filter unsupported properties
-      var base = instantiatePill(channel),
+      var fieldDef = instantiatePill(channel),
         shelfProps = Schema.getChannelSchema(channel).properties;
 
       for (var prop in shelfProps) {
@@ -170,14 +191,14 @@ angular.module('voyager2')
           if (prop==='value' && pill.field) {
             // only copy value if field is not defined
             // (which should never be the case)
-            delete base[prop];
+            delete fieldDef[prop];
           } else {
             //FXIME In some case this should be merge / recursive merge instead ?
-            base[prop] = pill[prop];
+            fieldDef[prop] = pill[prop];
           }
         }
       }
-      encoding[channel] = base;
+      encoding[channel] = fieldDef;
     }
 
     Pills.listener = {
@@ -196,18 +217,18 @@ angular.module('voyager2')
       dragDrop: function(cidDragTo, cidDragFrom) {
         // Make a copy and update the clone of the encoding to prevent glitches
         var encoding = _.clone(Spec.spec.encoding);
-        // console.log('dragDrop', encoding, Pills, 'from:', etDragFrom, Pills.pills[etDragFrom]);
+        // console.log('dragDrop', encoding, Pills, 'from:', cidDragFrom, Pills.get(cidDragFrom));
 
         // If pill is dragged from another shelf, not the schemalist
         if (cidDragFrom) {
-          // console.log('pillDragFrom', Pills.pills[etDragFrom]);
-          updateChannelDef(encoding, Pills.pills[cidDragFrom] || {}, cidDragFrom);
+          // console.log('pillDragFrom', Pills.get(cidDragFrom));
+          updateChannelDef(encoding, Pills.get(cidDragFrom) || {}, cidDragFrom);
         }
-        updateChannelDef(encoding, Pills.pills[cidDragTo] || {}, cidDragTo);
+        updateChannelDef(encoding, Pills.get(cidDragTo) || {}, cidDragTo);
 
         // console.log('Pills.dragDrop',
-        //   'from:', etDragFrom, Pills.pills[etDragFrom], encoding[etDragFrom],
-        //   'to:', etDragTo, Pills.pills[etDragTo], encoding[etDragTo]);
+        //   'from:', cidDragFrom, Pills.get(cidDragFrom), encoding[cidDragFrom],
+        //   'to:', cidDragTo, Pills.get(cidDragTo), encoding[cidDragTo]);
 
         // Finally, update the encoding only once to prevent glitches
         Spec.spec.encoding = encoding;

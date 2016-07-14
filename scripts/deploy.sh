@@ -9,8 +9,8 @@ NC='\033[0m' # No Color
 type jq >/dev/null 2>&1 || { echo >&2 "I require jq but it's not installed.  Aborting."; exit 1; }
 
 # 0.2 check if on master
-if [ "$(git rev-parse --abbrev-ref HEAD)" != "master" ]; then
-  echo "${RED}Not on master, please checkout master branch before running this script${NC}"
+if [ "$(git rev-parse --abbrev-ref HEAD)" != "ps-master" ]; then
+  echo "${RED}Not on ps-master, please checkout ps-master branch before running this script${NC}"
   exit 1
 fi
 
@@ -39,4 +39,6 @@ git add .
 git commit -am "release $version $gitsha"
 git tag -am "Release v$version." "v$version"
 git push --tags
+git push origin gh-pages:gh-pages
 cd ..
+
