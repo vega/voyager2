@@ -142,7 +142,7 @@ angular.module('voyager2')
         var query = Spec.cleanQuery = getQuery(spec);
         var output = cql.query(query, Dataset.schema);
         Spec.query = output.query;
-        var topItem = cql.modelGroup.getTopItem(output.result);
+        var topItem = cql.model.SpecQueryModelGroup.getTopSpecQueryModel(output.result);
         Spec.isSpecific = isAllChannelAndFieldSpecific(topItem);
 
         if (Spec.isSpecific) {
@@ -266,7 +266,7 @@ angular.module('voyager2')
 
           // The top spec will always have specific mark.
           // We need to restore the mark to ANY if applicable.
-          var topSpec = cql.modelGroup.getTopItem(result).toSpec();
+          var topSpec = cql.model.SpecQueryModelGroup.getTopSpecQueryModel(result).toSpec();
           if (oldMarkIsEnumSpec) {
             topSpec.mark = ANY;
           }
