@@ -58,7 +58,12 @@ angular.module('voyager2')
         // This is why I hate js
         if (obj[prop] === null ||
           obj[prop] === undefined ||
-          (_.isObject(obj[prop]) && vg.util.keys(obj[prop]).length === 0 && prop !== 'bin') || // In general, {} should be removed from spec. bin:{} is an exception.
+          (
+            // In general, {} should be removed from spec. bin:{} is an exception.
+            _.isObject(obj[prop]) &&
+            vg.util.keys(obj[prop]).length === 0 &&
+            prop !== 'bin'
+          ) ||
           obj[prop] === []) {
           delete obj[prop];
         }
