@@ -50,17 +50,17 @@ angular.module('voyager2')
       });
     };
 
-    function deleteNulls(spec) {
-      for (var i in spec) {
-        if (_.isObject(spec[i])) {
-          deleteNulls(spec[i]);
+    function deleteNulls(obj) {
+      for (var prop in obj) {
+        if (_.isObject(obj[prop])) {
+          deleteNulls(obj[prop]);
         }
         // This is why I hate js
-        if (spec[i] === null ||
-          spec[i] === undefined ||
-          (_.isObject(spec[i]) && vg.util.keys(spec[i]).length === 0) ||
-          spec[i] === []) {
-          delete spec[i];
+        if (obj[prop] === null ||
+          obj[prop] === undefined ||
+          (_.isObject(obj[prop]) && vg.util.keys(obj[prop]).length === 0 && prop !== 'bin') || // In general, {} should be removed from spec. bin:{} is an exception.
+          obj[prop] === []) {
+          delete obj[prop];
         }
       }
     }
