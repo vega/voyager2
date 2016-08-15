@@ -9,6 +9,7 @@ angular.module('voyager2')
       addCategoricalField: addCategoricalField,
       addQuantitativeField: addQuantitativeField,
       addTemporalField: addTemporalField,
+      changeTimeUnit: changeTimeUnit,
       histograms: histograms,
 
       getHistograms: getHistograms,
@@ -55,11 +56,18 @@ angular.module('voyager2')
         });
       }
 
-      if (!hasT && hasOpenPosition) {
+      if (hasT) {
         alternativeTypes.push({
-          type: 'addTemporalField',
-          title: 'Add Temporal Field'
+          type: 'changeTimeUnit',
+          title: 'Change Time Unit'
         });
+      } else {
+        if (hasOpenPosition) {
+          alternativeTypes.push({
+            type: 'addTemporalField',
+            title: 'Add Temporal Field'
+          });
+        }
       }
 
       alternativeTypes.push({
@@ -73,7 +81,6 @@ angular.module('voyager2')
           title: 'Disaggregate'
         });
       }
-
 
       return alternativeTypes.map(function(alternative) {
         alternative.output = executeQuery(alternative.type, query, chart);
@@ -262,6 +269,40 @@ angular.module('voyager2')
         chooseBy: 'effectiveness',
         config: {
           autoAddCount: true
+        }
+      };
+    }
+
+    function changeTimeUnit(query) {
+      var newSpecQ = util.duplicate(query.spec);
+
+      // Make mark an enum spec
+      newSpecQ.mark = makeEnumSpec(newSpecQ.mark);
+
+      // For convert encoding for summary
+      newSpecQ.encodings = newSpecQ.encodings.reduce(function (encodings, encQ) {
+        if (cql.enumSpec.isEnumSpec(encQ.type)) {
+          // This is just in case we support type = enumSpec in the future
+          encQ.timeUnit = makeEnumSpec(encQ.timeUnit);
+        } else {
+          switch (encQ.type) {
+            case vl.type.Type.TEMPORAL:
+              encQ.timeUnit = makeEnumSpec(encQ.timeUnit);
+              break;
+          }
+        }
+        return encodings.concat(encQ);
+      }, []);
+
+      // TODO: extend config
+      return {
+        spec: newSpecQ,
+        groupBy: GROUP_BY_SIMILAR_DATA_AND_TRANSFORM,
+        orderBy: 'aggregationQuality',
+        chooseBy: 'effectiveness',
+        config: {
+          autoAddCount: true,
+          omitRaw: true
         }
       };
     }
