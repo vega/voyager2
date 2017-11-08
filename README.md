@@ -1,9 +1,9 @@
-# Voyager 2 -- Alpha
+# Voyager 2 (OLDER ANGULAR VERSION)
 
 Voyager2 is Tableau-style User Interface for visual analysis with support for partial specification, building on top
 of [Vega-Lite](https://github.com/vega/vega-lite) and [CompassQL](https://github.com/vega/compassql). 
 
-**This project hosts an older prototype of Voyager 2.  We are developing the new version of Voyager 2, hosted in [this repository](https://github.com/vega/voyager).**
+**This project hosts an older prototype of Voyager 2.  The newer version of Voyager 2 in React.js is hosted at https://github.com/vega/voyager.**
 Please subscribe to our [mailing list](https://groups.google.com/forum/#!forum/data-voyager) to follow our updates.**
 
 
